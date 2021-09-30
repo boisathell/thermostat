@@ -26,7 +26,7 @@ void setup() {
 }
 
 void loop() {
-  delay(1000);
+  delay(500);
 
   float f = dht.readTemperature(true);
   Serial.println(f);
