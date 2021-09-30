@@ -1,0 +1,12 @@
+{
+  "additionalFiles": "",
+  "builtInLibrariesFolders": "/home/devil/Downloads/arduino-1.8.16/libraries",
+  "builtInToolsFolders": "",
+  "compiler.optimization_flags": "",
+  "customBuildProperties": "build.warn_data_percentage=75",
+  "fqbn": "arduino:avr:uno",
+  "hardwareFolders": "/home/devil/.arduino15/packages",
+  "otherLibrariesFolders": "/home/devil/Arduino/libraries",
+  "runtime.ide.version": "10607",
+  "sketchLocation": "/home/devil/Documents/thermostat/thermostat.ino"
+}

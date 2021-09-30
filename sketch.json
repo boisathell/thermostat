@@ -1,0 +1,6 @@
+{
+  "cpu": {
+    "fqbn": "Seeeduino:samd:seeed_XIAO_m0",
+    "port": ""
+  }
+}

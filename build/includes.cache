@@ -1,0 +1,42 @@
+[
+  {
+    "Sourcefile": null,
+    "Include": "",
+    "Includepath": "/home/devil/.arduino15/packages/arduino/hardware/avr/1.8.3/cores/arduino"
+  },
+  {
+    "Sourcefile": null,
+    "Include": "",
+    "Includepath": "/home/devil/.arduino15/packages/arduino/hardware/avr/1.8.3/variants/standard"
+  },
+  {
+    "Sourcefile": "/home/devil/Documents/thermostat/build/sketch/thermostat.ino.cpp",
+    "Include": "DHT.h",
+    "Includepath": "/home/devil/Arduino/libraries/DHT_sensor_library"
+  },
+  {
+    "Sourcefile": "/home/devil/Documents/thermostat/build/sketch/thermostat.ino.cpp",
+    "Include": "",
+    "Includepath": null
+  },
+  {
+    "Sourcefile": "/home/devil/Arduino/libraries/DHT_sensor_library/DHT.cpp",
+    "Include": "",
+    "Includepath": null
+  },
+  {
+    "Sourcefile": "/home/devil/Arduino/libraries/DHT_sensor_library/DHT_U.cpp",
+    "Include": "Adafruit_Sensor.h",
+    "Includepath": "/home/devil/Arduino/libraries/Adafruit_Unified_Sensor"
+  },
+  {
+    "Sourcefile": "/home/devil/Arduino/libraries/DHT_sensor_library/DHT_U.cpp",
+    "Include": "",
+    "Includepath": null
+  },
+  {
+    "Sourcefile": "/home/devil/Arduino/libraries/Adafruit_Unified_Sensor/Adafruit_Sensor.cpp",
+    "Include": "",
+    "Includepath": null
+  }
+]
