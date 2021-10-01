@@ -1,6 +1,19 @@
 const SP = require('serialport');
-const port = new SP('/dev/ttyACM0', { baudRate: 9600 });
+const seeed = new SP('/dev/ttyACM0', { baudRate: 9600 });
+const mega = new SP('/dev/ttyACM1', { baudRate: 9600 }); 
 
-port.on('readable', ()=>{
-    console.log(port.read().toString());
+let write_t = 0;
+mega.on('readable', ()=>{
+   let t = mega.read().toString();
+   //process.stdout.write(t);
+   write_t = (new Date()).getTime();
+   //seeed.write('ABC\n');
+   seeed.write(t);
+});
+
+seeed.on('readable', ()=>{
+   //console.log((new Date()).getTime() - write_t); 
+   //let data = seeed.read().toString();
+   process.stdout.write(seeed.read());
+   
 });
