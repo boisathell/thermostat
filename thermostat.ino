@@ -6,7 +6,7 @@
 #define REVERSE 9
 #define FAN 10
 
-static const float target = 75;
+static const float target = 72;
 static const float margin = 1;
 
 DHT dht(DHTPIN, DHTTYPE);
@@ -30,7 +30,7 @@ void loop() {
 
   float f = dht.readTemperature(true);
   Serial.println(f);
-
+/*
   // too hot
   if (target + margin < f) {
     digitalWrite(HEAT_PUMP, HIGH);
@@ -44,5 +44,6 @@ void loop() {
     digitalWrite(FAN, LOW);
     digitalWrite(REVERSE, LOW);
   }
+  */
   
 }
