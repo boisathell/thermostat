@@ -109,6 +109,8 @@ void loop() {
         Serial.print(heat_pump_status);
         Serial.print(" | FAN: ");
         Serial.print(fan_status);
+        Serial.print(" | WARNING: ");
+        Serial.print(warning ? "ON | " : "OFF | ");
 
         if (to_fl != 0) {
           if (to_fl > 10.0 && to_fl < 140.0 && abs(builtin_f - to_fl) < 30.0 ) {

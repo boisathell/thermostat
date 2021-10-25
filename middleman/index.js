@@ -13,7 +13,11 @@ mega.on('readable', ()=>{
 
 seeed.on('readable', ()=>{
    //console.log((new Date()).getTime() - write_t); 
-   //let data = seeed.read().toString();
-   process.stdout.write(seeed.read());
+  // let data = seeed.read().toString() + " " + (new Date()).getTime().toString();
    
+  let data = seeed.read().toString().split('\n');
+  let jstr = " " + (new Date()).getTime().toString() + "\n";
+  let out = data.join(jstr);
+  process.stdout.write(out);
+  
 });
