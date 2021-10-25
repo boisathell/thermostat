@@ -2,11 +2,14 @@
 #define DHTPIN 7     
 #define DHTTYPE DHT11
 
+
 #define HEAT_PUMP 8
 #define REVERSE 9
 #define FAN 10
 
 #define DISABLE_RELAYS false
+#define NUM_SAMPLES 10
+#define SAMPLE_TIME 1000
 
 
 static const float target = 72;
@@ -23,9 +26,26 @@ String fan_status = String("OFF");
 String heat_pump_status = String("OFF");
 static int WARNING_LED_HALF_BLINK_TIME = 50; // 10 times a second
 bool warning = false;
+float to_fl = 0.0; // remote decoded float value (not used anymore)
 
+float samples[NUM_SAMPLES];
 
 DHT dht(DHTPIN, DHTTYPE);
+
+
+int push_n = 0;
+void pushTemp(float t) {
+  samples[push_n] = t;
+
+  float sum = 0;
+  for (int i = 0; i < NUM_SAMPLES; i++) {
+    sum+=samples[i];
+  }
+  f = sum / NUM_SAMPLES;
+  
+  push_n++;
+  push_n = push_n % NUM_SAMPLES;
+}
 
 
 void setup() {
@@ -41,7 +61,13 @@ void setup() {
   digitalWrite(FAN, LOW);
 
   dht.begin();
-  f = dht.readTemperature(true);
+
+  // populate with 10 datapoints
+  for (int i = 0; i < NUM_SAMPLES; i++) {
+    delay(SAMPLE_TIME);
+    pushTemp(dht.readTemperature(true));
+  }
+
   builtin_f = f;
 
   T_0 = millis(); 
@@ -79,24 +105,7 @@ void updateRelays() {
 
 }
 
-void loop() {
-  updateRelays();
-
-  if (millis() - UPDATE_T > MIN_REFRESH_INTERVAL) {
-    builtin_f = dht.readTemperature(true);
-    f = builtin_f; 
-    warning = true;
-    UPDATE_T = millis();
-  }
-
-  while (Serial.available() > 0) {
-    int d = Serial.read();
-    if (d != -1) {
-      char c = d;
-      data += String(c);
-      if (c == '\n') {
-        float to_fl = data.toFloat();
-        
+void emitSerialUpdate() {
         Serial.print(f);
         Serial.print(' ');
         Serial.print("REMOTE=");
@@ -111,48 +120,13 @@ void loop() {
         Serial.print(fan_status);
         Serial.print(" | WARNING: ");
         Serial.print(warning ? "ON | " : "OFF | ");
+        Serial.println("");
+}
 
-        if (to_fl != 0) {
-          if (to_fl > 10.0 && to_fl < 140.0 && abs(builtin_f - to_fl) < 30.0 ) {
-            f = to_fl; 
-          } else {
-            f = builtin_f;
-            Serial.print("  ---  Suspicious Sensor Values, Using Internal Measurement. Data Vector:");
-            for (char d_n = 0; d_n < data.length(); d_n++) {
-              int d_a_n = data.charAt(d_n);
-              Serial.print("  ");
-              Serial.print(d_a_n);
-            } 
-          }
-        } else {
-          f = builtin_f;
-          Serial.print("  ---  Float Conversion Failure. Using Internal Measurement. Data Vector:");
-          for (char d_n = 0; d_n < data.length(); d_n++) {
-            int d_a_n = data.charAt(d_n);
-            Serial.print("  ");
-            Serial.print(d_a_n);
-          } 
-          
-        }
-        Serial.print('\n');
-        UPDATE_T = millis();
-        data = String("");
-        builtin_f = dht.readTemperature(true);
-      }
-    }
-  }  
-
-  if (warning) {
-    if (millis() % (2 * WARNING_LED_HALF_BLINK_TIME) < WARNING_LED_HALF_BLINK_TIME) {
-      digitalWrite(LED_BUILTIN, HIGH); 
-    } else {
-      digitalWrite(LED_BUILTIN, LOW); 
-    }
-  } else {
-    digitalWrite(LED_BUILTIN, LOW);
-  }
-  
-  delay(10);
-  
-
+void loop() {
+  updateRelays();
+  emitSerialUpdate();
+  delay(SAMPLE_TIME);
+  pushTemp(dht.readTemperature(true));
+  builtin_f = f;
 }
