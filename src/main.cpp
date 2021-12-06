@@ -1,5 +1,6 @@
 #include "Adafruit_Sensor.h"
 #include "DHT.h"
+
 #define DHTPIN 7
 #define DHTTYPE DHT11
 
@@ -7,133 +8,99 @@
 #define REVERSE 9
 #define FAN 10
 
-#define DISABLE_RELAYS false
-#define NUM_SAMPLES 25
-#define SAMPLE_TIME 1000
+#define NUM_SENS_SAMPLES 10
+#define NUM_TEMP_SAMPLES 10
+#define SMOOTH_FAC (2 / (1 + NUM_TEMP_SAMPLES))
 
-static const float cooltarget = 74 - 3;
-static const float heattarget = 71 - 3; // just moved it down by 3
-static const float margin = 1;
-float f = cooltarget;
-float builtin_f = cooltarget;
-unsigned long T_0 = 0;
-unsigned long UPDATE_T = 0;
-static unsigned long MIN_REFRESH_INTERVAL = 2 * 60 * 1000; // 2 minutes
-String data = String("");
+#define COOL_ABOVE 73
+#define HEAT_BELOW 68
+#define MARGIN 2
 
-String target_status = String("");
-String fan_status = String("OFF");
-String heat_pump_status = String("OFF");
-static int WARNING_LED_HALF_BLINK_TIME = 50; // 10 times a second
-bool warning = false;
-float to_fl = 0.0; // remote decoded float value (not used anymore)
-
-float samples[NUM_SAMPLES];
+enum Mode { OFF, COOLING, HEATING };
+Mode mode;
 
 DHT dht(DHTPIN, DHTTYPE);
 
-int push_n = 0;
-void pushTemp(float t) {
-    samples[push_n] = t;
+float avg = 0;
+float temp = 72; // vaguely reasonable starting value
 
-    float sum = 0;
-    for (int i = 0; i < NUM_SAMPLES; i++) {
-        sum += samples[i];
+float sampleTemp() {
+    avg = 0;
+    for (int i = 0; i < NUM_SENS_SAMPLES; i++) {
+        avg += dht.readTemperature(true);
+        delay(10);
     }
-    f = sum / NUM_SAMPLES;
+    avg /= NUM_SENS_SAMPLES;
 
-    push_n++;
-    push_n = push_n % NUM_SAMPLES;
+    return avg * SMOOTH_FAC + temp * (1 - SMOOTH_FAC); // ema filter
+}
+
+void off() {
+    digitalWrite(FAN, LOW);
+    digitalWrite(HEAT_PUMP, LOW);
+    digitalWrite(REVERSE, LOW);
+}
+
+void cool() {
+    digitalWrite(FAN, HIGH);
+    digitalWrite(HEAT_PUMP, HIGH);
+    digitalWrite(REVERSE, HIGH);
+}
+
+void heat() {
+    digitalWrite(FAN, HIGH);
+    digitalWrite(HEAT_PUMP, HIGH);
+    digitalWrite(REVERSE, LOW);
+}
+
+void print() {
+    Serial.print("Temp:");
+    Serial.print(temp);
+
+    Serial.print("\tState:");
+    if (mode == OFF)
+        Serial.print("OFF");
+    else if (mode == COOLING)
+        Serial.print("COOLING");
+    else if (mode == HEATING)
+        Serial.print("HEATING");
+
+    Serial.println("");
 }
 
 void setup() {
     Serial.begin(9600);
+    dht.begin();
 
     pinMode(LED_BUILTIN, OUTPUT);
     pinMode(FAN, OUTPUT);
     pinMode(HEAT_PUMP, OUTPUT);
     pinMode(REVERSE, OUTPUT);
 
-    digitalWrite(HEAT_PUMP, LOW);
-    digitalWrite(REVERSE, LOW);
-    digitalWrite(FAN, LOW);
+    off();
 
-    dht.begin();
+    for (int i = 0; i < NUM_TEMP_SAMPLES; i++)
+        temp = sampleTemp();
 
-    // populate with 10 datapoints
-    for (int i = 0; i < NUM_SAMPLES; i++) {
-        delay(SAMPLE_TIME);
-        pushTemp(dht.readTemperature(true));
-    }
-
-    builtin_f = f;
-
-    T_0 = millis();
-    UPDATE_T = T_0;
-}
-
-void updateRelays() {
-    target_status =
-        String(heattarget - margin) + " < T* < " + String(cooltarget + margin);
-
-    if (heattarget - margin > f) {
-        // too cold
-        if (!DISABLE_RELAYS) {
-            digitalWrite(HEAT_PUMP, HIGH);
-            digitalWrite(FAN, HIGH);
-            digitalWrite(REVERSE, LOW);
-        }
-        heat_pump_status = String("ON, NOTREVERSED (HEATING)");
-        fan_status = String("ON");
-        target_status = String(heattarget + margin) + " > " +
-                        String(heattarget - margin) + " > T*";
-    } else if (heattarget + margin < f && f < cooltarget - margin) {
-        // acceptable
-        if (!DISABLE_RELAYS) {
-            digitalWrite(HEAT_PUMP, LOW);
-            digitalWrite(FAN, LOW);
-            digitalWrite(REVERSE, LOW);
-        }
-        heat_pump_status = String("OFF");
-        fan_status = String("OFF");
-        target_status = String(heattarget + margin) + " < T* < " +
-                        String(cooltarget - margin);
-    } else if (cooltarget + margin < f) {
-        // too hot
-        if (!DISABLE_RELAYS) {
-            digitalWrite(HEAT_PUMP, HIGH);
-            digitalWrite(FAN, HIGH);
-            digitalWrite(REVERSE, HIGH);
-        }
-        heat_pump_status = String("ON, REVERSED (COOLING)");
-        fan_status = String("ON");
-        target_status = String(cooltarget - margin) + " < " +
-                        String(cooltarget + margin) + " < T*";
-    }
-}
-
-void emitSerialUpdate() {
-    Serial.print(f);
-    Serial.print(' ');
-    Serial.print("REMOTE=");
-    Serial.print(to_fl);
-    Serial.print(" INTERNAL=");
-    Serial.print(builtin_f);
-    Serial.print(" | STATUS: ");
-    Serial.print(target_status);
-    Serial.print(" | HEAT_PUMP: ");
-    Serial.print(heat_pump_status);
-    Serial.print(" | FAN: ");
-    Serial.print(fan_status);
-    Serial.print(" | WARNING: ");
-    Serial.print(warning ? "ON | " : "OFF | ");
-    Serial.print("\n");
+    mode = OFF;
 }
 
 void loop() {
-    updateRelays();
-    emitSerialUpdate();
-    delay(SAMPLE_TIME);
-    pushTemp(dht.readTemperature(true));
-    builtin_f = f;
+    temp = sampleTemp();
+
+    if (temp > COOL_ABOVE) {
+        mode = COOLING;
+        cool();
+    } else if (temp < HEAT_BELOW) {
+        mode = HEATING;
+        heat();
+    }
+
+    if ((mode == COOLING && temp < COOL_ABOVE - MARGIN) ||
+        (mode == HEATING && temp > HEAT_BELOW + MARGIN)) {
+        mode = OFF;
+        off();
+    }
+
+    print();
 }
